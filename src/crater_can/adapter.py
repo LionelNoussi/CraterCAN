@@ -45,7 +45,7 @@ class CraterCAN:
                         self._callback(frame)
             time.sleep(0.001)
 
-    def start(self, callback_func: Callable[[CANFrame], None]) -> None:
+    def listen(self, callback_func: Callable[[CANFrame], None]) -> None:
         """Starts the background thread and assigns the callback."""
         self._callback = callback_func
         self._running = True

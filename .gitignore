@@ -1,1 +1,15 @@
-/.venv
+# Python metadata and caches
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Firmware build artifacts
+firmware/build/
+.pio/
