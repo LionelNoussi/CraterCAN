@@ -37,7 +37,11 @@ can_err_t crater_can_transmit(const can_frame_t* frame, uint32_t timeout_ms) {
         memcpy(twai_msg.data, frame->data, frame->data_length_code);
     }
 
-    esp_err_t err = twai_transmit(&twai_msg, timeout_ms / portTICK_PERIOD_MS);
+    // Ensure at least one tick if timeout is requested
+    uint32_t ticks = timeout_ms / portTICK_PERIOD_MS;
+    if (timeout_ms > 0 && ticks == 0) ticks = 1;
+
+    esp_err_t err = twai_transmit(&twai_msg, ticks);
     if (err == ESP_ERR_TIMEOUT) return CAN_ERR_TIMEOUT;
     if (err != ESP_OK) return CAN_ERR_FAIL;
 
@@ -47,8 +51,12 @@ can_err_t crater_can_transmit(const can_frame_t* frame, uint32_t timeout_ms) {
 can_err_t crater_can_receive(can_frame_t* frame, uint32_t timeout_ms) {
     if (frame == NULL) return CAN_ERR_INVALID_ARG;
 
+    // Ensure at least one tick if timeout is requested
+    uint32_t ticks = timeout_ms / portTICK_PERIOD_MS;
+    if (timeout_ms > 0 && ticks == 0) ticks = 1;
+
     twai_message_t twai_msg;
-    esp_err_t err = twai_receive(&twai_msg, timeout_ms / portTICK_PERIOD_MS);
+    esp_err_t err = twai_receive(&twai_msg, ticks);
     
     if (err == ESP_ERR_TIMEOUT) return CAN_ERR_TIMEOUT;
     if (err != ESP_OK) return CAN_ERR_FAIL;
