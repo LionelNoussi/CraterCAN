@@ -7,7 +7,7 @@ def on_msg(frame: CANFrame) -> None:
 
 
 # TODO Change this to the port on your host machine
-PORT = '/dev/cu.usbserial-120'
+PORT = '/dev/cu.usbserial-140'
 
 def main():
     bus = CraterCAN(PORT)
