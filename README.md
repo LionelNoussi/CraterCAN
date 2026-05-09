@@ -1,104 +1,189 @@
 # Crater CAN
 
-Internal repository for interfacing ESP32 micro-controllers with the Waveshare USB-CAN testbench adapter.
+Internal repository for interfacing ESP32 micro-controllers and Maxon EPOS4 Motor Controllers with the Waveshare USB-CAN testbench adapter.
 
-## Python Setup Instructions
+## Table of Contents
 
-### 1. Create a Virtual Environment
-Run this command from the root of the repository:
+- [Python Setup](#python-setup)
+- [Firmware Overview](#firmware-overview)
+- [Maxon EPOS4 Physical Setup](#maxon-epos4-physical-setup)
+- [Using the EPOS4 Simulator](#using-the-epos4-simulator)
+- [Hardware Connections](#hardware-connections)
+- [Example Usage](#example-usage)
+
+---
+
+# Python Setup Instructions
+
+## 1. Create a Virtual Environment
 
 ```bash
 [CraterCAN/] $ python -m venv .venv
 ```
 
-### 2. Activate the Environment
+## 2. Activate the Environment
 
-**Mac/Linux:**
-```bash
-[CraterCAN/] $ source .venv/bin/activate
-```
+- **Mac/Linux**
+  ```bash
+  source .venv/bin/activate
+  ```
 
-**Windows:**
-```bash
-[CraterCAN/] $ .venv\Scripts\activate
-```
+- **Windows**
+  ```powershell
+  .venv\Scripts\activate
+  ```
 
-### 3. Install the Package
+## 3. Install the Package
 
-This installs the `crater_can` library in editable mode. This means any changes you make to the source code apply immediately without needing to reinstall.
+Installs `crater_can` in editable mode for development.
 
 ```bash
 [(.venv) CraterCAN/] $ pip install -e .
 ```
 
-## Firmware Overview
+---
 
-The firmware directory contains the C implementation for the ESP32. This code handles the low level TWAI driver configuration and message processing.
+# Maxon EPOS4 Physical Setup
 
-### Files in this directory
+To interface with Maxon EPOS4 controllers, follow these hardware guidelines:
 
-`firmware/src/crater_can.c`: Contains the hardware specific implementation for initialization, transmission, and reception.
-`firmware/include/crater_can.h`: Defines the hardware agnostic can_frame_t structure and the crater_can_err_t error types
-`example/main.c`: example application showing how to integrate these functions into a main execution loop.
+## 1. Wiring the Bus
 
-### How to run the firmware
+The CAN bus must be a daisy-chain. Ensure the two ends of the physical bus are terminated with `120Ω` resistors.
 
-**Include the files:** Copy crater_can.h and crater_can.c into your project structure. If you are using ESP-IDF, ensure they are added to your CMakeLists.txt. If using PlatformIO or Arduino, place them in your src or lib folders.
+## 2. Configuration (EPOS Studio)
 
-**Configuration:** In your main file, define the GPIO pins used for TX and RX. For example, pins 4 and 5 are common for many microcontrollers.
+Before using this library, connect to your controllers via USB using Maxon EPOS Studio and ensure:
 
-**Initialization:** Call the `crater_can_init` function once at the start of your program. This function installs the TWAI driver at 500kbps and starts the CAN controller.
+- **Node ID:** Set each motor to a unique ID (e.g., `1`, `2`, `3`)
+- **Automatic Bitrate Detection:** Usually enabled by default; the motor will "listen" to the bus to sync its speed
 
-**Receiving Messages:** Use the `crater_can_receive` function to receive a `can_frame` with a specific timeout. Check the return error code, to see if a message was received, a timeout happened or the call failed for another reason. The result will be stored a the `can_frame` pointer, which was provided to the function.
+## 3. CANopen Objects
 
-**Transmitting Messages:** Use the `crater_can_transmit` function to transmit a message, by providing it a pointer to a properly filled out `can_frame`.
+This library uses:
 
-*Hardware Porting*
-If you are using a non-ESP32 controller, you can keep the crater_can.h file to ensure your function signatures matches the rest of the team, but will have to re-implement the crater_can.c file for your hardware.
+- **SDOs (Service Data Objects)** for synchronous configuration
+- **Heartbeats** for connectivity monitoring
 
+### Units
 
-## Hardware Connections
+- **Position:** Measured in `"quadcounts"` (typically `10,000` steps per rotation)
+- **Velocity:** Measured in `RPM`
 
-Ensure the following 4-wire connection between the ESP32 and the testbench transceiver:
+---
 
-| MCU Pin | Transceiver Label |
-|--------|------------------|
-| 5V     | VCC              |
-| GND    | GND              |
-| GPIO 4 | CAN TX           |
-| GPIO 5 | CAN RX           |
+# Using the EPOS4 Simulator
 
-**Note:** Ensure the USB-CAN adapter is plugged into your computer before starting the Python script.
+If you do not have physical hardware, you can develop using the built-in simulator and a virtual serial bridge.
 
+## 1. Setup Virtual Ports (macOS)
 
-
-## Running the Example
-
-### Important: Set your Serial Port
-
-Before running the example, you must update the serial port string to match your machine's connection.
-
-1. Open `example/main.py`
-2. Find the line:
-   ```python
-   port = '/dev/cu.usbserial-120'
-   ```
-3. Change the string to your specific port e.g.:
-   - Windows: `COM3`
-   - Mac/Linux: `/dev/cu.usbserial-XXX`
-
-### Flash your microcontroller
-
-Copy the crater_can.h and crater_can.c files into your project and set-up a simple echo script, like in the example provided. Re-build your project and flash your micro-controller.
-
-### Execute the Script
-
-Run this command from the root directory:
+Install `socat` and create a bridge:
 
 ```bash
-[(.venv) CraterCAN/] $ python example/main.py
+brew install socat
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
 ```
 
+This will output two ports, e.g.:
 
+```text
+/dev/ttys001
+/dev/ttys002
+```
 
+## 2. Launch the Simulator
 
+Run the simulator on one of the two ports in a separate terminal. This provides a GUI with virtual motor dials and real-time logs.
+
+```bash
+python example/simulate_canbus.py --port /dev/ttys002
+```
+
+## 3. Run the Control Logic
+
+Run your script on the first port.
+
+```bash
+python example/maxon_example.py --port /dev/ttys001
+```
+
+The simulator mimics the **CiA 402 State Machine**:
+
+```text
+Shutdown -> Switch On -> Enable
+```
+
+The virtual motor will not move unless the proper enable sequence is followed.
+
+---
+
+# Firmware Overview
+
+The `firmware` directory contains the C implementation for the ESP32 TWAI driver.
+
+## Core Files
+
+- `firmware/src/crater_can.c`
+  - Hardware-specific TWAI implementation
+
+- `firmware/include/crater_can.h`
+  - Agnostic structures and error types
+
+## Implementation Logic
+
+### Init
+
+`crater_can_init` installs the driver at `500 kbps`.
+
+### Transmitting
+
+Fill a `can_frame_t` and pass it to `crater_can_transmit`.
+
+### Receiving
+
+`crater_can_receive` blocks until a message arrives or a timeout occurs.
+
+---
+
+# Hardware Connections
+
+## ESP32 to Transceiver
+
+| MCU Pin | Transceiver Label |
+|---|---|
+| 5V | VCC |
+| GND | GND |
+| GPIO 4 | CAN TX |
+| GPIO 5 | CAN RX |
+
+## USB-CAN Adapter to EPOS4
+
+| Adapter Label | EPOS4 CAN Header |
+|---|---|
+| CAN_H | CAN High |
+| CAN_L | CAN Low |
+| GND | Ground |
+
+---
+
+# Example Usage
+
+The library is designed to be highly readable. All "Hex Magic" is hidden behind Enums.
+
+```python
+from crater_can import CraterCAN, EPOS4Node, OpMode
+
+bus = CraterCAN(port='/dev/cu.usbserial-120')
+bus.listen()
+
+motor = EPOS4Node(bus, node_id=1)
+
+if motor.wait_for_heartbeat():
+    motor.clear_faults()
+    motor.set_operation_mode(OpMode.PROFILE_VELOCITY)
+    motor.enable()
+    motor.set_velocity(500)  # 500 RPM
+```
+
+> **Note:** Always call `bus.stop()` at the end of your script to release the serial port.
