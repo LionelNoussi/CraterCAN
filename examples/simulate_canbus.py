@@ -1,31 +1,21 @@
 import argparse
-
 from crater_can.epos4_simulator import EPOS4Simulator, CraterSimulatorBus
 
+
+# NOTE
 # Run `socat -d -d pty,raw,echo=0 pty,raw,echo=0`
 # to generate two virtual serial ports on your mac/linux machine
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Run the EPOS4 simulator"
-    )
 
-    parser.add_argument(
-        "--port",
-        type=str,
-        help="Serial port to bind the simulator to (e.g. /dev/ttys008)",
-        default="/dev/ttys008"
-    )
-
-    args = parser.parse_args()
+def main(port):
 
     sim_nodes = [
-        EPOS4Simulator(node_id=1),
-        EPOS4Simulator(node_id=2),
+        EPOS4Simulator(node_id=node_id)
+        for node_id in [1, 2, 3, 4]
     ]
 
     bus_sim = CraterSimulatorBus(
-        port=args.port,
+        port=port,
         nodes=sim_nodes
     )
 
@@ -38,4 +28,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+
+    # NOTE change default port to match your machine or provide it with --port
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=str, default="/dev/ttys008")
+    port = parser.parse_args().port
+    
+    main(port)

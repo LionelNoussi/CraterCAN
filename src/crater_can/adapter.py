@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import List, Callable, Optional
 
+
 @dataclass(frozen=True)
 class CANFrame:
     """Immutable structure representing a single CAN message."""
@@ -21,7 +22,7 @@ class CraterCAN:
         try:
             self.ser: serial.Serial = serial.Serial(port, baud, timeout=0.01)
         except OSError:
-            # This allows socat/pty to work without crashing
+            # This allows socat/pty simulated serial port
             self.ser: serial.Serial = serial.Serial(port, timeout=0.01)
         
         self._callbacks: List[Callable[[CANFrame], None]] = []
@@ -76,6 +77,7 @@ class CraterCAN:
         """Stops listening by deactivating the background thread."""
         self._running = False
 
-    def stop(self) -> None:
+    def close(self) -> None:
+        """Stops listening and closes the serial connection."""
         self._running = False
         self.ser.close()

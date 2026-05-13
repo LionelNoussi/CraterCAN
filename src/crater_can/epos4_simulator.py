@@ -11,6 +11,10 @@ import serial
 import math
 
 
+# NOTE VIBE CODED THE FUCK OUT OF IT
+# NO IDEA HOW IT WORKS
+
+
 class EPOS4Simulator:
     def __init__(self, node_id: int):
         self.node_id = node_id

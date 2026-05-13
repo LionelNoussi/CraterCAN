@@ -6,6 +6,7 @@ from typing import Optional
 from .adapter import CraterCAN, CANFrame
 from .epos4_constants import CANopenID, SDOCommand, ObjectIndex, OpMode, ControlCommand, StatusBit, DataType
 
+
 class EPOS4Node:
     def __init__(self, bus: CraterCAN, node_id: int, debug: bool = False):
         assert isinstance(bus, CraterCAN), "bus must be an instance of CraterCAN"
@@ -22,7 +23,7 @@ class EPOS4Node:
         
         self._last_statusword = 0x0000
         self._heartbeat_received = False
-        self._sdo_mailboxes = {} 
+        self._sdo_mailboxes = {}
         
         self.logger = logging.getLogger(f"EPOS4_Node_{self.node_id}")
         self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
@@ -69,6 +70,7 @@ class EPOS4Node:
         payload.extend(data_bytes)
         payload.extend(b'\x00' * (8 - len(payload))) 
 
+        # Empty sdo mailbox before sending sdo request
         self._sdo_mailboxes.pop((index.value, subindex), None)
         self.bus.send(self.sdo_tx_id, list(payload))
         
@@ -129,21 +131,31 @@ class EPOS4Node:
         status = self._get_statusword()
         if status and (status & StatusBit.FAULT):
             self.logger.info("Fault detected. Resetting...")
-            self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.FAULT_RESET.value, DataType.UINT16)
-            time.sleep(0.1) 
-        return True
+            ok = self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.FAULT_RESET.value, DataType.UINT16)
+            time.sleep(0.1)
+            return ok
+        return status is not None
 
     def enable(self) -> bool:
         self.logger.info("Enabling drive...")
         
-        self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.SHUTDOWN.value, DataType.UINT16)
-        if not self._wait_state(StatusBit.READY_TO_SWITCH_ON): return False
+        if not self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.SHUTDOWN.value, DataType.UINT16):
+            return False
+
+        if not self._wait_state(StatusBit.READY_TO_SWITCH_ON):
+            return False
             
-        self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.SWITCH_ON.value, DataType.UINT16)
-        if not self._wait_state(StatusBit.SWITCHED_ON): return False
+        if not self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.SWITCH_ON.value, DataType.UINT16):
+            return False
+        
+        if not self._wait_state(StatusBit.SWITCHED_ON):
+            return False
             
-        self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.ENABLE_OPERATION.value, DataType.UINT16)
-        if not self._wait_state(StatusBit.OPERATION_ENABLED): return False
+        if not self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.ENABLE_OPERATION.value, DataType.UINT16):
+            return False
+        
+        if not self._wait_state(StatusBit.OPERATION_ENABLED):
+            return False
             
         self.logger.info("Drive ENABLED.")
         return True
@@ -183,7 +195,9 @@ class EPOS4Node:
         if not self.sync_write(ObjectIndex.TARGET_POSITION, 0x00, steps, DataType.INT32):
             return False
             
-        self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.POS_REL_PREPARE.value, DataType.UINT16)
+        if not self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.POS_REL_PREPARE.value, DataType.UINT16):
+            return False
+        
         time.sleep(0.01)
         
         return self.sync_write(ObjectIndex.CONTROLWORD, 0x00, ControlCommand.POS_REL_EXECUTE.value, DataType.UINT16)
