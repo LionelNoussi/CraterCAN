@@ -41,6 +41,8 @@ Installs `crater_can` in editable mode for development.
 [(.venv) CraterCAN/] $ pip install -e .
 ```
 
+> **Note:** If you already have a virtual environment, you can also keep using it, and only pip install this directory in editable mode. This way you can also write and run your own scripts from another working directory.
+
 ---
 
 # Maxon EPOS4 Physical Setup
@@ -69,52 +71,6 @@ This library uses:
 
 - **Position:** Measured in `"quadcounts"` (typically `10,000` steps per rotation)
 - **Velocity:** Measured in `RPM`
-
----
-
-# Using the EPOS4 Simulator
-
-If you do not have physical hardware, you can develop using the built-in simulator and a virtual serial bridge.
-
-## 1. Setup Virtual Ports (macOS)
-
-Install `socat` and create a bridge:
-
-```bash
-brew install socat
-socat -d -d pty,raw,echo=0 pty,raw,echo=0
-```
-
-This will output two ports, e.g.:
-
-```text
-/dev/ttys001
-/dev/ttys002
-```
-
-## 2. Launch the Simulator
-
-Run the simulator on one of the two ports in a separate terminal. This provides a GUI with virtual motor dials and real-time logs.
-
-```bash
-python example/simulate_canbus.py --port /dev/ttys002
-```
-
-## 3. Run the Control Logic
-
-Run your script on the first port.
-
-```bash
-python example/maxon_example.py --port /dev/ttys001
-```
-
-The simulator mimics the **CiA 402 State Machine**:
-
-```text
-Shutdown -> Switch On -> Enable
-```
-
-The virtual motor will not move unless the proper enable sequence is followed.
 
 ---
 
@@ -216,3 +172,45 @@ After setting up the python environment and connecting the WaveshareAdapter to a
 Make sure to first see which USB port the WaveshareAdapter is connecting to, and to run the various scripts with `--port PORT_NAME`.
 
 Simple scripts to start with are `examples/listen.py` and `examples/send_heartbeat.py`. Also look inside of those scripts and try to understand what they do, so that you can also start writing your own scripts.
+
+
+---
+
+
+# Using the EPOS4 Simulator
+
+If you do not have physical hardware, you can develop using the built-in MAXON simulator and a virtual serial bridge.
+
+**1. Setup Virtual Ports (macOS)**
+
+Install `socat` and create a bridge:
+
+```bash
+brew install socat
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
+```
+
+This will output two ports, e.g.:
+
+```text
+/dev/ttys001
+/dev/ttys002
+```
+
+*For windows and linux, you'll have to google how to do this yourself.*
+
+**2. Launch the Simulator**
+
+Run the simulator on one of the two ports in a separate terminal. This provides a GUI with motor dials and real-time logs.
+
+```bash
+python example/simulate_canbus.py --port /dev/ttys002
+```
+
+**3. Run the Control Logic**
+
+Run your script on the other port.
+
+```bash
+python example/maxon_example.py --port /dev/ttys001
+```
