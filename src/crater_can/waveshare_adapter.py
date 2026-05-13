@@ -16,7 +16,7 @@ class CANFrame:
         return f"CANFrame(id={hex(self.id)}, data={self.data.hex(' ')})"
 
 
-class CraterCAN:
+class WaveshareAdapter:
     
     def __init__(self, port: str, baud: int = 2000000) -> None:
         try:

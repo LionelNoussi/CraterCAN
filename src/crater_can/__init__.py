@@ -1,6 +1,6 @@
 # src/crater_can/__init__.py
 
-from .adapter import CraterCAN, CANFrame
+from .waveshare_adapter import WaveshareAdapter, CANFrame
 from .epos4_constants import (
     ObjectIndex, 
     OpMode, 
@@ -12,7 +12,7 @@ from .epos4_controller import EPOS4Node
 from .epos4_simulator import EPOS4Simulator, CraterSimulatorBus # Added these
 
 __all__ = [
-    "CraterCAN",
+    "WaveshareAdapter",
     "CANFrame",
     "EPOS4Node",
     "ObjectIndex",

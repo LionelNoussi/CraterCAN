@@ -1,4 +1,4 @@
-from crater_can import CraterCAN, CANFrame
+from crater_can import WaveshareAdapter, CANFrame
 import time
 import argparse
 
@@ -9,7 +9,7 @@ def on_msg(frame: CANFrame) -> None:
 
 def main(port):
 
-    bus = CraterCAN(port)
+    bus = WaveshareAdapter(port)
     bus.listen(on_msg)
 
     print(f"CAN communication started on {port}. Press Ctrl+C to stop.")

@@ -3,13 +3,13 @@ import struct
 import logging
 from typing import Optional
 
-from .adapter import CraterCAN, CANFrame
+from .waveshare_adapter import WaveshareAdapter, CANFrame
 from .epos4_constants import CANopenID, SDOCommand, ObjectIndex, OpMode, ControlCommand, StatusBit, DataType
 
 
 class EPOS4Node:
-    def __init__(self, bus: CraterCAN, node_id: int, debug: bool = False):
-        assert isinstance(bus, CraterCAN), "bus must be an instance of CraterCAN"
+    def __init__(self, bus: WaveshareAdapter, node_id: int, debug: bool = False):
+        assert isinstance(bus, WaveshareAdapter), "bus must be an instance of CraterCAN"
         assert isinstance(node_id, int), "node_id must be an integer"
         assert 1 <= node_id <= 127, "node_id must be between 1 and 127 (CANopen standard)"
         assert isinstance(debug, bool), "debug must be a boolean"

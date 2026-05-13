@@ -1,10 +1,10 @@
 import time
-from crater_can import CraterCAN, EPOS4Node, OpMode
+from crater_can import WaveshareAdapter, EPOS4Node, OpMode
 import argparse
 
 
 def main(port):
-    bus = CraterCAN(port=port, baud=2000000) 
+    bus = WaveshareAdapter(port=port, baud=2000000) 
     bus.listen()
 
     node_ids = [1, 2, 3, 4]

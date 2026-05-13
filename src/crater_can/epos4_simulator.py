@@ -3,7 +3,7 @@ import struct
 import threading
 import tkinter as tk
 from typing import List, Dict, Optional
-from .adapter import CANFrame
+from .waveshare_adapter import CANFrame
 from .epos4_constants import (
     ObjectIndex, SDOCommand, StatusBit, ControlCommand, OpMode, CANopenID
 )
