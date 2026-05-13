@@ -1,6 +1,6 @@
 # Crater CAN
 
-Internal repository for interfacing ESP32 micro-controllers and Maxon EPOS4 Motor Controllers with the Waveshare USB-CAN testbench adapter.
+Internal repository for interfacing ESP32 micro-controllers and Maxon EPOS4 Motor Controllers with the Waveshare USB-CAN adapter.
 
 ## Table of Contents
 
@@ -124,66 +124,95 @@ The `firmware` directory contains the C implementation for the ESP32 TWAI driver
 
 ## Core Files
 
-- `firmware/src/crater_can.c`
+- `ESP32_firmware/src/crater_can.c`
   - Hardware-specific TWAI implementation
 
-- `firmware/include/crater_can.h`
+- `ESP32_firmware/include/crater_can.h`
   - Agnostic structures and error types
+
+- `ESP32_firmware/src/main.c`
+  - Example main script for echoing and sending hearbeat
 
 ## Implementation Logic
 
-### Init
-
 `crater_can_init` installs the driver at `500 kbps`.
 
-### Transmitting
+To send a frame, fill a `can_frame_t` and pass it to `crater_can_transmit`.
 
-Fill a `can_frame_t` and pass it to `crater_can_transmit`.
-
-### Receiving
-
-`crater_can_receive` blocks until a message arrives or a timeout occurs.
+To receive a frame, use `crater_can_receive`, which blocks until a message arrives or a timeout occurs.
 
 ---
 
 # Hardware Connections
 
+## EPOS4 MAXON CONTROLELR
+
+![molex_adapter](./docs/images/adapter.png)
+
+| Adapter Pin | CAN usage |
+|---|---|
+| 1 | CAN High |
+| 2 | CAN Low |
+| 3 | GND |
+| 4 | Shield (optional) |
+
+The dip switches on the controller control various CAN options.
+
+Switches 0-5 are for setting the ID in binary format.
+
+Switch 6 can enable or disable `auto-baudrate-detection`. Setting the switch low, turns on the setting.
+
+Switch 7 can enable or disable the 120 $\Omega$ termination resistance. Setting the switch low, places it.
+
+When connecting to the controllers via branches, it is important that all of them have the termination resistance turned on. If they are connected by daisy-chaining, only the last one should have the terminatino resitance.
+
 ## ESP32 to Transceiver
 
 | MCU Pin | Transceiver Label |
 |---|---|
-| 5V | VCC |
+| 5V or 3V | 5V or 3V |
 | GND | GND |
 | GPIO 4 | CAN TX |
 | GPIO 5 | CAN RX |
 
-## USB-CAN Adapter to EPOS4
 
-| Adapter Label | EPOS4 CAN Header |
+## CAN BUS
+
+
+Connect all the CAN_H, CAN_L and GND of each transceiver. Make sure to use one of the good, purple CAN cables for the actual long bus, and only use the molex adapters for short connection to the controllers. The color scheme that was used for now, was this:
+
+| Color | CAN Wire |
 |---|---|
-| CAN_H | CAN High |
-| CAN_L | CAN Low |
-| GND | Ground |
+| Blue | CAN_H |
+| White | CAN_L |
+| Black | GND |
+
+---
+
+## MAXON Configurations
+
+The following tutorial assumes, that the controllers have already been configured for their respective motors, and only CAN needs to be set-up.
+
+**Baudrate**: Go to the the Object-Dictionary and set the baudrate to 500 kbps. Then right-click and select save all parameters.
+
+**Heartbeat**: Go to the Object-Dictionary and set the `Producer Heartbeat Time` to 1000ms. Then right-click and select save all parameters.
+
+After configuring these two parameters, I always run the listen.py script found in `examples/listen.py`, and I see if I can see the heartbeat, which the various motors are sending. If you can see the heartbeat, you are done.
+
+### Various debugging steps
+
+- Is the light on the maxon controller blinking red or green? If it is red, connect to the controller with a Vala's window laptop, open EPOS studio and look at the error message.
+
+- Are you using a new WaveshareAdapter? First use Vala's windows laptop and configure it with a dedicated software to actually listen to messages by setting mode to normal, baudrate to 500 kbps and deactivating all filters. 
+
+- If you are completely new to CAN and setting up the controllers or micro-controller, start by simply getting the little echo-testbench to run on your laptop between the waveshare adapter and the ESP32, which is set-up at dübendorf. After you can use the waveshare adapter, go to Alex and let him explain to you how the battery management system works, so that you can turn on the motors safely. Finally, if you want to add a new controller to the network, go to Lionel and ask him how to connect the cables. For questions regarding the setup between the controllers and the motors ask Yunfei.
 
 ---
 
 # Example Usage
 
-The library is designed to be highly readable. All "Hex Magic" is hidden behind Enums.
+After setting up the python environment and connecting the WaveshareAdapter to a CAN-network, you can start running some of the example scripts, found in the `examples` directory.
 
-```python
-from crater_can import CraterCAN, EPOS4Node, OpMode
+Make sure to first see which USB port the WaveshareAdapter is connecting to, and to run the various scripts with `--port PORT_NAME`.
 
-bus = CraterCAN(port='/dev/cu.usbserial-120')
-bus.listen()
-
-motor = EPOS4Node(bus, node_id=1)
-
-if motor.wait_for_heartbeat():
-    motor.clear_faults()
-    motor.set_operation_mode(OpMode.PROFILE_VELOCITY)
-    motor.enable()
-    motor.set_velocity(500)  # 500 RPM
-```
-
-> **Note:** Always call `bus.stop()` at the end of your script to release the serial port.
+Simple scripts to start with are `examples/listen.py` and `examples/send_heartbeat.py`. Also look inside of those scripts and try to understand what they do, so that you can also start writing your own scripts.
